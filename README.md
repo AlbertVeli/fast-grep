@@ -18,21 +18,34 @@ Computers:
 
 Commands:
 
-> time sed -n '/\.se-/p' cred > se.txt
-> time perl -e 'while (<>) { /\.se-/ && print; }' cred > se.txt
-> time python2 -c 'for line in open("cred"):
->  if ".se-" in line:
->    print line.rstrip()' > se.txt
-> time grep '\.se-' cred > se.txt
-> time ./fast-grep '.se-' cred > se.txt
+1   Sed:
+    <pre><code>time sed -n '/\.se-/p' cred > se.txt</code></pre>
+
+2   Perl:
+    <pre><code>time perl -e 'while (<>) { /\.se-/ && print; }' cred > se.txt</code></pre>
+
+3   Python:
+    <pre><code>time python2 -c 'for line in open("cred"):
+    if ".se-" in line:
+        print line.rstrip()' > se.txt</code></pre>
+
+4   Grep:
+    <pre><code>time grep '\.se-' cred > se.txt</code></pre>
+
+5   Fast-grep:
+    <pre><code>time ./fast-grep '.se-' cred > se.txt</code></pre>
+
+Results:
 
 <table>
     <tr>
-        <td>computer</td> <td>sed</td> <td>perl</td> <td>python</td> <td>grep</td> <td>fast-grep</td>
+        <td>Computer</td> <td>1 sed</td> <td>2 perl</td> <td>3 python</td> <td>4 grep</td> <td>5 fast-grep</td>
     </tr>
     <tr>
-        <td>Laptop</td> <td>1m15s</td> <td>1m7s</td> <td>0m57s</td> <td>0m19s</td> <td>0m5s</td>
-        <td>OS X</td> <td>3m2s</td> <td>0m45s</td> <td>0m33s</td> <td>2m29s</td> <td>0m5s</td>
+        <td>HP laptop</td> <td>1m15s</td> <td>1m7s</td> <td>0m57s</td> <td>0m19s</td> <td>0m5s</td>
+    </tr>
+    <tr>
+        <td>Mac OS X</td> <td>3m2s</td> <td>0m45s</td> <td>0m33s</td> <td>2m29s</td> <td>0m5s</td>
     </tr>
 </table>
 
