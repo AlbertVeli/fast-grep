@@ -1,0 +1,6 @@
+fast-grep
+cred
+*.txt
+*.o
+*~
+*.plist
