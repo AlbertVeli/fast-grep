@@ -28,7 +28,7 @@ Commands:
     <pre><code>time sed -n '/\.se-/p' cred > se.txt</code></pre>
 
 2.  **Perl**
-    <pre><code>time perl -e 'while (<>) { /\.se-/ && print; }' cred > se.txt</code></pre>
+    <pre><code>time perl -e 'while (&lt;&gt;) { /\.se-/ && print; }' cred > se.txt</code></pre>
 
 3.  **Python**
     <pre><code>time python2 -c 'for line in open("cred"):
