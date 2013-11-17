@@ -7,6 +7,13 @@ No bells, no whistles, no case insensitivity, no regular expressions. Just plain
 This will print all lines containing the string *needle* in the file *haystack.txt*. Because of the multi-threading the order of the printed lines will be somewhat random.
 
 
+**EXAMPLE**
+
+Search for lines containing the string *'.se-'* in the file *cred*, but skip lines containing the string *'-|-|--'*:
+
+> ./fast-grep -v '-|-|--' '.se-' cred
+
+
 **LIMITATIONS**
 
 * Only tested with GNU/Linux and OS X.
@@ -21,6 +28,7 @@ Computers:
 
 * **HP** 8560w laptop (Core i7m, Linux), GNU sed 4.2.1, GNU grep 2.14, perl v5.12.4, Python 2.7.5
 * **Mac** (Core i5, OS X), BSD sed (version?), BSD grep 2.5.1, perl v5.16.2, Python 2.7.5
+* **Ubuntu** (Xeon W3550), GNU sed 4.2.1, GNU grep 2.10, perl v5.14.2, Python 2.7.3
 
 Commands:
 
@@ -53,11 +61,16 @@ Results:
     <tr>
         <td><b>Mac OS X</b></td> <td>3m2s</td> <td>0m45s</td> <td>0m33s</td> <td>2m29s</td> <td>0m5s</td>
     </tr>
+    <tr>
+        <td><b>Ubuntu</b></td> <td>1m13s</td> <td>1m14s</td> <td>1m13s</td> <td>1m11s</td> <td>1m17s<br />(1m10s w/o threading)</td>
+    </tr>
 </table>
 
 Note: fast-grep runs considerably slower the first time. After the file contents are cached in memory it performs good. This requires a computer with sufficient RAM, otherwise the filesystem becomes a bottleneck. None of the benchmarks in the table are from the first run. All programs had an equal chance to cache the file contents.
 
 Note2: Sed and grep runs faster on Linux while perl and python runs faster on OS X. To be completely fair the tests should be re-run on the same hardware. Sed and grep can be explained with different implementations (BSD/GNU) while the file reading seems to be faster on the Linux machine (ext4/HFS+).
+
+Note3: The Ubuntu machine didn't have enough RAM to cache the whole file in memory, so all programs had to do a lot of disk accesses. In this case it really measures the speed of the disk rather than the speed of the program.
 
 
 **LICENSE**
