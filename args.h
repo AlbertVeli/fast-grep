@@ -13,6 +13,8 @@ struct opts
    /* Optional */
    char *vstring;
    int vlen;
+   int single;
+   int debug;
 };
 
 /* Parsed options will be here */

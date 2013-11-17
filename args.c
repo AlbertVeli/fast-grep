@@ -25,7 +25,10 @@ static char *prog_doc =
    "needle   - string to search for\n"
    "haystack - name of file to search (for needle string)\n\n"
    "OPTIONS\n\n"
-   "-v <invert> - skip lines containing this \"invert\" string\n\n"
+   "-v <invert> - skip lines containing the \"invert\" pattern\n"
+   "-s          - single-thread (disable multi-threading)\n"
+   "-d          - print some debug info during execution\n"
+   "-h          - print this help text\n\n"
    "EXAMPLE\n\n"
    "Print all lines in the file cred containing the string\n"
    "'.se-', but skip lines containing the string '-|-|--':\n\n"
@@ -42,10 +45,12 @@ int parse_args(int argc, char **argv)
 
    /* Default values. */
    opt.vstring = NULL;
+   opt.single = 0;
+   opt.debug = 0;
 
    /* Parse optional arguments */
    opterr = 0;
-   while ((c = getopt (argc, argv, "hv:")) != -1) {
+   while ((c = getopt (argc, argv, "hsdv:")) != -1) {
 
       switch (c) {
 
@@ -54,8 +59,16 @@ int parse_args(int argc, char **argv)
          opt.vlen = strlen(opt.vstring);
          break;
 
+      case 's':
+         opt.single = 1;
+         break;
+
+      case 'd':
+         opt.debug = 1;
+         break;
+
       case 'h':
-         /* Just print help */
+         /* Just print help text */
          return 0;
 
 

@@ -74,8 +74,9 @@ void *run_chunk(void *data)
    size_t offset;
    chunk_t *chunk = (chunk_t *)data;
 
-   /* fprintf(stderr, "DBG: %ld, %ld\n", (long int)(chunk->start - map), (long int)chunk->len); */
-
+   if (opt.debug) {
+      fprintf(stderr, "DBG: %ld, %ld\n", (long int)(chunk->start - map), (long int)chunk->len);
+   }
    line = chunk->start;
    offset = 0;
 
@@ -91,20 +92,17 @@ void *run_chunk(void *data)
       if (memmem(line, linelen - 1, opt.needle, opt.needlen)) {
          /* and does *not* contain vstring (if present) */
          if ((!opt.vstring) || (!memmem(line, linelen - 1, opt.vstring, opt.vlen))) {
-            char tmp[512];
-            int len = linelen;
-            if (len > 511) {
-               len = 511;
-            }
-            memcpy(tmp, line, len);
-            tmp[linelen] = 0;
-            /* Not necessary to lock mutex for printf + threads.
-             * But it is needed for other means of writing
-             * like write(), see man 2 write.
+            /* Not necessary to lock mutex for printf or fputs
+             * in threads. Stdio functions use teir own locking. But
+             * for the unlocked counterparts (like fputs_unlocked)
+             * or something low-level, like write(), it *is* needed.
+             * In that case, uncomment the pthread_mutex_lock/unlock
+             * lines below.
              */
-            pthread_mutex_lock(&print_mutex);
-            printf("%s", tmp);
-            pthread_mutex_unlock(&print_mutex);
+            /* pthread_mutex_lock(&print_mutex); */
+            /* print linelen bytes of line to stdout */
+            printf("%.*s", (int)linelen, line);
+            /* pthread_mutex_unlock(&print_mutex); */
          }
       }
 
@@ -134,12 +132,16 @@ int main(int argc, char *argv[])
       return 1;
    }
 
-   /* Keep num_cpus inside 1 - MAX_CHUNKS */
-   num_cpus = (int)sysconf(_SC_NPROCESSORS_ONLN);
-   if (num_cpus < 2) {
+   if (opt.single) {
       num_cpus = 1;
-   } else if (num_cpus > MAX_CHUNKS) {
-      num_cpus = MAX_CHUNKS;
+   } else {
+      /* Keep num_cpus in range 1 - MAX_CHUNKS */
+      num_cpus = (int)sysconf(_SC_NPROCESSORS_ONLN);
+      if (num_cpus < 2) {
+         num_cpus = 1;
+      } else if (num_cpus > MAX_CHUNKS) {
+         num_cpus = MAX_CHUNKS;
+      }
    }
 
    /* Calculate start address and length of each chunk */
@@ -152,7 +154,6 @@ int main(int argc, char *argv[])
          /* Past last line (few lines in file), set 1 chunk */
          chunk[0].len = (size_t)mapstat.st_size;
          num_cpus = 1;
-         i = 0;
          break;
       }
       next = strchr(end, '\n');
@@ -164,22 +165,24 @@ int main(int argc, char *argv[])
          /* Past last line */
          chunk[0].len = (size_t)mapstat.st_size;
          num_cpus = 1;
-         i = 0;
          break;
       }
    }
+
    /* Adjust last len with help of file size */
    if (num_cpus > 1) {
       size_t abs_start = chunk[i].start - map;
       chunk[i].len = mapstat.st_size - abs_start;
    }
 
-   /* fprintf(stderr, "DBG: num processes %d\n", num_cpus); */
+   if (opt.debug) {
+      fprintf(stderr, "DBG: num threads %d\n", num_cpus);
+   }
 
    /* init mutex */
    pthread_mutex_init(&print_mutex, NULL);
 
-   /* Spawn num_cpus processes chewing on one chunk each */
+   /* Spawn num_cpus threads chewing on one chunk each */
    for (i = 0; i < num_cpus; i++) {
       pthread_create(&threads[i], NULL, &run_chunk, (void *)&chunk[i]);
    }
