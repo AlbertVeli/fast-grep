@@ -10,6 +10,8 @@
 #include <fcntl.h>
 #include <pthread.h>
 
+#include "args.h"
+
 typedef struct chunk {
    char *start;
    size_t len;
@@ -18,10 +20,6 @@ typedef struct chunk {
 /* Memory mapping */
 static char *map = NULL;
 static struct stat mapstat;
-
-/* Needle */
-static char *needle = NULL;
-static size_t needlen = 0;
 
 /* Threads */
 static pthread_mutex_t print_mutex;
@@ -38,7 +36,7 @@ int init_map(const char *filename)
 {
    int ret = 0;
    int fd = open(filename, O_RDONLY);
-   
+
    if (fd < 0) {
       perror(filename);
       goto out;
@@ -76,7 +74,7 @@ void *run_chunk(void *data)
    size_t offset;
    chunk_t *chunk = (chunk_t *)data;
 
-   /* fprintf(stderr, "DBG: %d - %ld, %ld\n", getpid(), (long int)(chunk->start - map), (long int)chunk->len); */
+   /* fprintf(stderr, "DBG: %ld, %ld\n", (long int)(chunk->start - map), (long int)chunk->len); */
 
    line = chunk->start;
    offset = 0;
@@ -89,23 +87,26 @@ void *run_chunk(void *data)
       /* Add 1 to linelen to include newline */
       linelen = next - line + 1;
 
-      /* If line contains needle */
-      if (memmem(line, linelen - 1, needle, needlen)) {
-         char tmp[512];
-         int len = linelen;
-         if (len > 511) {
-            len = 511;
+      /* Print line if it contains needle */
+      if (memmem(line, linelen - 1, opt.needle, opt.needlen)) {
+         /* and does *not* contain vstring (if present) */
+         if ((!opt.vstring) || (!memmem(line, linelen - 1, opt.vstring, opt.vlen))) {
+            char tmp[512];
+            int len = linelen;
+            if (len > 511) {
+               len = 511;
+            }
+            memcpy(tmp, line, len);
+            tmp[linelen] = 0;
+            /* Not necessary to lock mutex for printf + threads.
+             * But it is needed for other means of writing
+             * like write(), see man 2 write.
+             */
+            pthread_mutex_lock(&print_mutex);
+            printf("%s", tmp);
+            pthread_mutex_unlock(&print_mutex);
          }
-         memcpy(tmp, line, len);
-         tmp[linelen] = 0;
-         /* It is actually not necessary to lock the mutex
-          * when using printf. But it is needed for other methods
-          * of writing, like write().
-          */
-         pthread_mutex_lock(&print_mutex);
-         fprintf(stdout, "%s", tmp);
-         pthread_mutex_unlock(&print_mutex);
-       }
+      }
 
       offset += linelen;
       line = next + 1;
@@ -119,24 +120,19 @@ void *run_chunk(void *data)
 
 int main(int argc, char *argv[])
 {
-   char *filename;
    char *next, *end;
    pthread_t threads[MAX_CHUNKS];
    chunk_t chunk[MAX_CHUNKS];
    int num_cpus, i;
 
-   if (argc != 3) {
-      fprintf(stderr, "Usage: %s <string> <file>\n", argv[0]);
+   if (!parse_args(argc, argv)) {
+      print_usage();
       return 1;
    }
 
-   filename = argv[2];
-   if (!init_map(filename)) {
+   if (!init_map(opt.filename)) {
       return 1;
    }
-
-   needle = argv[1];
-   needlen = strlen(needle);
 
    /* Keep num_cpus inside 1 - MAX_CHUNKS */
    num_cpus = (int)sysconf(_SC_NPROCESSORS_ONLN);
@@ -195,7 +191,6 @@ int main(int argc, char *argv[])
 
    /* Cleanup */
    pthread_mutex_destroy(&print_mutex);
-
 
    return 0;
 }
