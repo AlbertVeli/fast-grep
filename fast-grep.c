@@ -11,6 +11,8 @@
 #include <pthread.h>
 
 #include "args.h"
+#include "print.h"
+#include "queue.h"
 
 typedef struct chunk {
    char *start;
@@ -20,9 +22,6 @@ typedef struct chunk {
 /* Memory mapping */
 static char *map = NULL;
 static struct stat mapstat;
-
-/* Threads */
-static pthread_mutex_t print_mutex;
 
 void free_map(void)
 {
@@ -92,17 +91,7 @@ void *run_chunk(void *data)
       if (memmem(line, linelen - 1, opt.needle, opt.needlen)) {
          /* and does *not* contain vstring (if present) */
          if ((!opt.vstring) || (!memmem(line, linelen - 1, opt.vstring, opt.vlen))) {
-            /* Not necessary to lock mutex for printf or fputs
-             * in threads. Stdio functions use teir own locking. But
-             * for the unlocked counterparts (like fputs_unlocked)
-             * or something low-level, like write(), it *is* needed.
-             * In that case, uncomment the pthread_mutex_lock/unlock
-             * lines below.
-             */
-            /* pthread_mutex_lock(&print_mutex); */
-            /* print linelen bytes of line to stdout */
-            printf("%.*s", (int)linelen, line);
-            /* pthread_mutex_unlock(&print_mutex); */
+            q_push(line, (int)linelen);
          }
       }
 
@@ -179,8 +168,8 @@ int main(int argc, char *argv[])
       fprintf(stderr, "DBG: num threads %d\n", num_cpus);
    }
 
-   /* init mutex */
-   pthread_mutex_init(&print_mutex, NULL);
+   /* Start print thread */
+   spawn_print_thread();
 
    /* Spawn num_cpus threads chewing on one chunk each */
    for (i = 0; i < num_cpus; i++) {
@@ -193,7 +182,7 @@ int main(int argc, char *argv[])
    }
 
    /* Cleanup */
-   pthread_mutex_destroy(&print_mutex);
+   join_print_thread();
 
    return 0;
 }

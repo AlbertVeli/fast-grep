@@ -1,5 +1,5 @@
 eXe = fast-grep
-OBJS = $(eXe).o args.o
+OBJS = $(eXe).o args.o print.o queue.o
 
 #DEBUG = yes
 ifdef DEBUG
