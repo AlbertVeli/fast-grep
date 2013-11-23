@@ -13,14 +13,14 @@
 
 #include "queue.h"
 
-#define MAXQ 4096
+#define MAXQ (1024*8)
 static myq_t q[MAXQ];
 static int head = -1;
 static int tail = -1;
 static pthread_mutex_t q_mutex;
 static pthread_cond_t q_cond;
 static int time_to_exit = 0;
-
+static int q_active = 0;
 
 void q_init(void)
 {
@@ -33,13 +33,14 @@ void q_init(void)
 
    pthread_mutex_init(&q_mutex, NULL);
    pthread_cond_init(&q_cond, NULL);
+   q_active = 1;
 }
 
 void q_release(void)
 {
    time_to_exit = 1;
+   q_active = 0;
    pthread_cond_broadcast(&q_cond);
-   sleep(1); /* give thread a second to exit */
    pthread_cond_destroy(&q_cond);
    pthread_mutex_destroy(&q_mutex);
 }
@@ -95,6 +96,10 @@ char *q_pop(int *len)
 {
    myq_t *pq, *tq;
    char *rets = NULL;
+
+   if (!q_active) {
+      return NULL;
+   }
 
    pthread_mutex_lock(&q_mutex);
 
